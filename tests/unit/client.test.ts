@@ -1,6 +1,5 @@
 import { EnhancedRedisClient } from "../../src/core/client";
-import { defaultRedisConfig } from "../../src/config/redis.config";
-import { Client } from "redis-om";
+import { ENV } from "../../src/config/env.config";
 
 // Mock redis-om Client
 jest.mock("redis-om", () => ({
@@ -13,9 +12,14 @@ jest.mock("redis-om", () => ({
 
 describe("EnhancedRedisClient", () => {
   let client: EnhancedRedisClient;
+  const testConfig = {
+    url: `redis://${ENV.redis.host}:${ENV.redis.port}`,
+    username: ENV.redis.username,
+    password: ENV.redis.password,
+  };
 
   beforeEach(() => {
-    client = new EnhancedRedisClient(defaultRedisConfig);
+    client = new EnhancedRedisClient(testConfig);
   });
 
   test("should create instance with default config", () => {

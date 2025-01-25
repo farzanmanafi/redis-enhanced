@@ -1,17 +1,22 @@
+import * as dotenv from "dotenv";
+dotenv.config();
+
 import { EnhancedRedisClient } from "../src";
 import { createClient } from "redis";
 import {
   PersistenceType,
   AOFSyncOption,
 } from "../src/interfaces/persistence.interface";
+import { ENV } from "../src/config/env.config";
+import { validateEnv } from "../src/utils/env.validator";
 
 async function persistenceExample() {
-  console.log("Starting persistence example...");
-
   // When connecting to Redis with authentication, we need to properly format the URL
   // The format should be: redis://default:password@hostname:port
   // 'default' is the default username when none is specified
-  const REDIS_URL = "redis://default:123456@localhost:6380";
+  validateEnv();
+
+  const REDIS_URL = `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
 
   // Create both clients with proper authentication
   const enhancedClient = new EnhancedRedisClient({

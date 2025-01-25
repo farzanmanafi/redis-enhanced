@@ -1,6 +1,11 @@
+import * as dotenv from "dotenv";
+dotenv.config();
+
 import { Client, Schema, Repository, Entity } from "redis-om";
 import { createClient } from "redis";
 import { TransactionManager } from "../src/core/transaction";
+import { ENV } from "../src/config/env.config";
+import { validateEnv } from "../src/utils/env.validator";
 
 interface EntityData extends Entity {
   [key: string]: any;
@@ -10,19 +15,21 @@ interface EntityData extends Entity {
 }
 
 async function transactionExample() {
+  validateEnv();
+
+  const REDIS_URL = `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`;
+
   const redisClient = createClient({
-    url: "redis://127.0.0.1:6380",
-    password: "123456",
+    url: REDIS_URL,
   });
 
   const client = new Client();
 
   try {
     await redisClient.connect();
-    console.log("Redis client connected");
-
-    await client.open("redis://:123456@127.0.0.1:6380");
-    console.log("Redis-OM client opened");
+    await client.open(
+      `redis://${ENV.redis.username}:${ENV.redis.password}@${ENV.redis.host}:${ENV.redis.port}`
+    );
 
     const schema = new Schema("test", {
       name: { type: "string" },

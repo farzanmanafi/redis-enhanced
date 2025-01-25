@@ -22,7 +22,9 @@ describe("PersistenceManager", () => {
   test("should set RDB persistence", async () => {
     const config = {
       type: PersistenceType.RDB,
-      rdbOptions: { saveFrequency: 3600 },
+      rdbOptions: {
+        saveFrequency: parseInt(process.env.RDB_SAVE_FREQUENCY || "3600"),
+      },
     };
 
     await manager.setPersistence(config);

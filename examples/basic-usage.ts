@@ -1,17 +1,20 @@
+// examples/basic-usage.ts
+import * as dotenv from "dotenv";
+dotenv.config();
 import { EnhancedRedisClient } from "../src";
+import { ENV } from "../src/config/env.config";
+import { validateEnv } from "../src/utils/env.validator";
 
 async function basicExample() {
-  try {
-    const client = new EnhancedRedisClient({
-      url: "redis://default:123456@localhost:6380",
-    });
+  validateEnv(); // Add validation before creating config
 
-    try {
-      await client.connect();
-    } catch (connectionError) {
-      console.error("Failed to connect to Redis:", connectionError);
-      return; // Exit gracefully if connection fails
-    }
+  const config = {
+    url: `redis://${process.env.REDIS_USERNAME}:${process.env.REDIS_PASSWORD}@${process.env.REDIS_HOST}:${process.env.REDIS_PORT}`,
+  };
+  const client = new EnhancedRedisClient(config);
+
+  try {
+    await client.connect();
 
     const transactionManager = client.getTransactionManager();
 
@@ -20,19 +23,16 @@ async function basicExample() {
       value: 42,
     });
 
-    console.log("Saved Entity:", savedEntity);
-
     const fetchedEntity = await transactionManager.fetch(savedEntity.entityId!);
-
-    console.log("Fetched Entity:", fetchedEntity);
 
     await transactionManager.remove(savedEntity.entityId!);
 
-    console.log("Entity removed successfully");
-
     await client.disconnect();
   } catch (error) {
-    console.error("Detailed Redis operation error:", error);
+    console.error("Error:", error);
+    if (client) {
+      await client.disconnect();
+    }
   }
 }
 

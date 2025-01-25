@@ -5,22 +5,22 @@ import {
   PersistenceType,
   AOFSyncOption,
 } from "../../src/interfaces/persistence.interface";
+import { TEST_REDIS_URL } from "./setup";
 
 describe("PersistenceManager Integration", () => {
   let omClient: Client;
   let manager: PersistenceManager;
   let nativeRedisClient: ReturnType<typeof createClient>;
-  const REDIS_URL = "redis://default:123456@localhost:6380";
 
   beforeAll(async () => {
     omClient = new Client();
     nativeRedisClient = createClient({
-      url: REDIS_URL,
+      url: TEST_REDIS_URL,
     });
 
     try {
       await nativeRedisClient.connect();
-      await omClient.open(REDIS_URL);
+      await omClient.open(TEST_REDIS_URL);
       manager = new PersistenceManager(omClient);
     } catch (error) {
       console.error("Setup error:", error);

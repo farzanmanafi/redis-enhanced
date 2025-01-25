@@ -1,7 +1,7 @@
 import { TransactionManager } from "../../src/core/transaction";
 import { Client, Schema, Repository, Entity } from "redis-om";
 import { EntityData } from "../../src/interfaces/entity.interface";
-import { createClient } from "redis";
+import { ENV } from "../../src/config/env.config";
 
 const mockSave = jest.fn();
 const mockFetch = jest.fn();
@@ -30,6 +30,7 @@ jest.mock("redis", () => ({
     connect: jest.fn().mockResolvedValue(undefined),
     quit: mockQuit,
     isOpen: true, // Explicitly set isOpen to true
+    url: `redis://${ENV.redis.username}:${ENV.redis.password}@${ENV.redis.host}:${ENV.redis.port}`,
   })),
 }));
 

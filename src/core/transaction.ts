@@ -69,8 +69,46 @@ export class TransactionManager<T extends EntityData> {
     }
   }
 
+  // async remove(entityId: string): Promise<void> {
+  //   try {
+  //     await this.repository.remove(entityId);
+
+  //     const keyPatterns = [
+  //       `${this.schemaName}:${entityId}`,
+  //       `${this.schemaName}:${entityId}:*`,
+  //       `*:${entityId}:*`,
+  //     ];
+
+  //     for (const pattern of keyPatterns) {
+  //       const keys = await this.nativeClient.keys(pattern);
+  //       if (keys.length > 0) {
+  //         await this.nativeClient.del(keys);
+  //       }
+  //     }
+
+  //     const remainingKeys = await this.nativeClient.keys(
+  //       `${this.schemaName}:${entityId}*`
+  //     );
+
+  //     if (remainingKeys.length > 0) {
+  //       await this.nativeClient.del(remainingKeys);
+  //     }
+
+  //     await new Promise((resolve) => setTimeout(resolve, 200));
+  //   } catch (error) {
+  //     console.error("Error in remove:", error);
+  //     throw error;
+  //   }
+  // }
+
+  // src/core/transaction.ts
   async remove(entityId: string): Promise<void> {
     try {
+      // Create native client if not exists
+      if (!this.nativeClient.isOpen) {
+        await this.nativeClient.connect();
+      }
+
       await this.repository.remove(entityId);
 
       const keyPatterns = [
@@ -86,21 +124,12 @@ export class TransactionManager<T extends EntityData> {
         }
       }
 
-      const remainingKeys = await this.nativeClient.keys(
-        `${this.schemaName}:${entityId}*`
-      );
-
-      if (remainingKeys.length > 0) {
-        await this.nativeClient.del(remainingKeys);
-      }
-
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await this.nativeClient.quit();
     } catch (error) {
       console.error("Error in remove:", error);
       throw error;
     }
   }
-
   async disconnect(): Promise<void> {
     if (this.nativeClient.isOpen) {
       await this.nativeClient.quit();

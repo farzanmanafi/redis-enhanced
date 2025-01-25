@@ -1,8 +1,7 @@
 import { Client, Schema, Repository, Entity } from "redis-om";
 import { createClient } from "redis";
 import { TransactionManager } from "../../src/core/transaction";
-
-const REDIS_URL = "redis://default:123456@localhost:6380";
+import { TEST_REDIS_URL } from "./setup";
 
 interface TestEntity extends Entity {
   name: string;
@@ -19,10 +18,10 @@ describe("TransactionManager Integration", () => {
 
   beforeAll(async () => {
     client = new Client();
-    nativeRedisClient = createClient({ url: REDIS_URL });
+    nativeRedisClient = createClient({ url: TEST_REDIS_URL });
 
     await nativeRedisClient.connect();
-    await client.open(REDIS_URL);
+    await client.open(TEST_REDIS_URL);
 
     schema = new Schema(
       "test",
