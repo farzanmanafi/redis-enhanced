@@ -1,0 +1,43 @@
+# version: "3.8"
+# services:
+#   redis:
+#     image: redis/redis-stack:latest
+#     container_name: redis-stack
+#     ports:
+#       - "6380:6379"
+#     command: >
+#       redis-server
+#       --loadmodule /opt/redis-stack/lib/redisearch.so
+#       --loadmodule /opt/redis-stack/lib/rejson.so
+#       --appendonly yes
+#       --save ""
+#       --requirepass 123456
+#       --protected-mode no
+#     volumes:
+#       - redis_data:/data
+
+# volumes:
+#   redis_data:
+#     driver: local
+
+version: "3.8"
+
+services:
+  redis:
+    image: redis/redis-stack:latest
+    container_name: redis-stack
+    ports:
+      - "6380:6379"
+    command: >
+      redis-server 
+      --loadmodule /opt/redis-stack/lib/rejson.so 
+      --appendonly yes 
+      --save "" 
+      --requirepass 123456 
+      --protected-mode no
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:
+    driver: local

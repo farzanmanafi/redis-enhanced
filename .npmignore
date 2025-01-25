@@ -1,0 +1,11 @@
+# .npmignore
+src/
+tests/
+examples/
+docker-compose.yml
+Dockerfile*
+.github/
+coverage/
+jest.config.js
+tsconfig.json
+*.test.ts
