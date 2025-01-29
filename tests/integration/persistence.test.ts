@@ -4,7 +4,9 @@ import { PersistenceManager } from "../../src/core/persistence";
 import {
   PersistenceType,
   AOFSyncOption,
+  PersistenceConfig,
 } from "../../src/interfaces/persistence.interface";
+import { ErrorCode } from "../../src/errors";
 import { TEST_REDIS_URL } from "./setup";
 
 describe("PersistenceManager Integration", () => {
@@ -13,92 +15,148 @@ describe("PersistenceManager Integration", () => {
   let nativeRedisClient: ReturnType<typeof createClient>;
 
   beforeAll(async () => {
-    omClient = new Client();
-    nativeRedisClient = createClient({
-      url: TEST_REDIS_URL,
-    });
-
+    // Initialize Redis clients
     try {
-      await nativeRedisClient.connect();
-      await omClient.open(TEST_REDIS_URL);
-      manager = new PersistenceManager(omClient);
+      nativeRedisClient = createClient({
+        url: TEST_REDIS_URL,
+      });
+
+      omClient = new Client();
+
+      // Connect both clients
+      await Promise.all([
+        nativeRedisClient.connect(),
+        omClient.open(TEST_REDIS_URL),
+      ]);
+
+      // Create manager after clients are connected
+      manager = new PersistenceManager(omClient, nativeRedisClient);
     } catch (error) {
       console.error("Setup error:", error);
       throw error;
     }
-  }, 60000);
+  }, 30000);
 
   afterAll(async () => {
-    await nativeRedisClient.quit();
-    await omClient.close();
-  }, 30000);
+    try {
+      // Cleanup in reverse order
+      if (nativeRedisClient?.isOpen) {
+        await nativeRedisClient.quit();
+      }
+      if (omClient) {
+        await omClient.close();
+      }
+    } catch (error) {
+      console.error("Cleanup error:", error);
+    }
+  }, 10000);
 
-  beforeEach(async () => {
-    // Reset Redis configuration before each test
-    await nativeRedisClient.configSet("save", "");
-    await nativeRedisClient.configSet("appendonly", "no");
-    await nativeRedisClient.configSet("appendfsync", "everysec");
+  describe("Persistence Configuration", () => {
+    beforeEach(async () => {
+      // Reset Redis configuration before each test
+      if (!nativeRedisClient.isOpen) {
+        await nativeRedisClient.connect();
+      }
 
-    // Wait for configuration to take effect
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+      await nativeRedisClient.configSet("save", "");
+      await nativeRedisClient.configSet("appendonly", "no");
+      await nativeRedisClient.configSet("appendfsync", "everysec");
+
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    });
+
+    test("should configure RDB persistence with valid options", async () => {
+      const config: PersistenceConfig = {
+        type: PersistenceType.RDB,
+        rdbOptions: {
+          saveFrequency: 3600,
+        },
+      };
+
+      await manager.setPersistence(config);
+      const save = await nativeRedisClient.configGet("save");
+      expect(save.save).toBe("3600 1");
+    }, 10000);
+
+    test("should configure AOF persistence with valid options", async () => {
+      const config: PersistenceConfig = {
+        type: PersistenceType.AOF,
+        aofOptions: {
+          appendfsync: AOFSyncOption.EVERYSEC,
+        },
+      };
+
+      await manager.setPersistence(config);
+
+      const [appendonly, appendfsync] = await Promise.all([
+        nativeRedisClient.configGet("appendonly"),
+        nativeRedisClient.configGet("appendfsync"),
+      ]);
+
+      expect(appendonly.appendonly).toBe("yes");
+      expect(appendfsync.appendfsync).toBe("everysec");
+    }, 10000);
+
+    test("should disable persistence when type is NONE", async () => {
+      const config: PersistenceConfig = {
+        type: PersistenceType.NONE,
+      };
+
+      await manager.setPersistence(config);
+
+      const [save, appendonly] = await Promise.all([
+        nativeRedisClient.configGet("save"),
+        nativeRedisClient.configGet("appendonly"),
+      ]);
+
+      expect(save.save).toBe("");
+      expect(appendonly.appendonly).toBe("no");
+    }, 10000);
+
+    test("should reject invalid persistence type", async () => {
+      const config = {
+        type: "INVALID" as PersistenceType,
+      };
+
+      await expect(manager.setPersistence(config)).rejects.toMatchObject({
+        code: ErrorCode.INVALID_CONFIG,
+      });
+    });
+
+    test("should reject RDB configuration without save frequency", async () => {
+      const config: PersistenceConfig = {
+        type: PersistenceType.RDB,
+      };
+
+      await expect(manager.setPersistence(config)).rejects.toMatchObject({
+        code: ErrorCode.INVALID_CONFIG,
+      });
+    });
   });
 
-  test("should configure RDB persistence", async () => {
-    // First, explicitly set RDB configuration using native client
-    await nativeRedisClient.configSet("save", "3600 1");
+  describe("Persistence Status", () => {
+    test("should retrieve correct persistence status", async () => {
+      const status = await manager.checkPersistenceStatus();
 
-    // Then apply our persistence configuration
-    await manager.setPersistence({
-      type: PersistenceType.RDB,
-      rdbOptions: { saveFrequency: 3600 },
+      expect(status).toHaveProperty("rdbSaveInProgress");
+      expect(status).toHaveProperty("aofRewriteInProgress");
+      expect(status).toHaveProperty("lastRdbSaveTime");
+      expect(status).toHaveProperty("lastAofRewriteTime");
+
+      expect(typeof status.rdbSaveInProgress).toBe("boolean");
+      expect(typeof status.aofRewriteInProgress).toBe("boolean");
     });
+  });
 
-    // Wait for configuration to take effect
-    await new Promise((resolve) => setTimeout(resolve, 1000));
+  describe("Current Configuration", () => {
+    test("should detect when no persistence is configured", async () => {
+      // Disable all persistence
+      await manager.setPersistence({ type: PersistenceType.NONE });
 
-    // Verify configuration using CONFIG GET
-    const save = await nativeRedisClient.configGet("save");
-    expect(save.save).toBe("3600 1");
-
-    // Verify RDB is enabled in persistence info
-    const info = await nativeRedisClient.info("persistence");
-    expect(info).toMatch(/rdb_bgsave_in_progress:0/);
-  }, 30000);
-
-  test("should configure AOF persistence", async () => {
-    // First, explicitly enable AOF using native client
-    await nativeRedisClient.configSet("appendonly", "yes");
-    await nativeRedisClient.configSet("appendfsync", "everysec");
-
-    // Then apply our persistence configuration
-    await manager.setPersistence({
-      type: PersistenceType.AOF,
-      aofOptions: { appendfsync: AOFSyncOption.EVERYSEC },
+      const config = await manager.getCurrentConfig();
+      expect(config.type).toBe(PersistenceType.NONE);
+      expect(config.rdbOptions).toBeUndefined();
+      expect(config.aofOptions).toBeUndefined();
     });
-
-    // Wait for configuration to take effect
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Verify configuration
-    const appendonly = await nativeRedisClient.configGet("appendonly");
-    const appendfsync = await nativeRedisClient.configGet("appendfsync");
-
-    expect(appendonly.appendonly).toBe("yes");
-    expect(appendfsync.appendfsync).toBe("everysec");
-  }, 30000);
-
-  test("should disable persistence", async () => {
-    // Apply no persistence configuration
-    await manager.setPersistence({ type: PersistenceType.NONE });
-
-    // Wait for configuration to take effect
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    // Verify configuration
-    const save = await nativeRedisClient.configGet("save");
-    const appendonly = await nativeRedisClient.configGet("appendonly");
-
-    expect(save.save).toBe("");
-    expect(appendonly.appendonly).toBe("no");
-  }, 30000);
+  });
 });
