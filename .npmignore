@@ -8,7 +8,5 @@ Dockerfile*
 coverage/
 jest.config.js
 tsconfig.json
-*.test.ts.env
-.env
-.env
-.env
+*.test.ts
+

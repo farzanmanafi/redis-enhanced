@@ -1,7 +1,7 @@
 {
   "name": "redis-enhanced",
   "version": "1.0.0",
-  "description": "Enhanced Redis client with persistence and transaction support",
+  "description": "Advanced Redis client with persistence and transaction support built on redis-om",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
@@ -18,10 +18,16 @@
     "redis",
     "redis-om",
     "persistence",
-    "transaction"
+    "transaction",
+    "typescript"
   ],
-  "author": "Your Name",
+  "author": "Farzaneh Manafi",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/farzanmanafi/redis-enhanced.git"
+  },
+  "homepage": "https://github.com/farzanmanafi/redis-enhanced#readme",
   "dependencies": {
     "dotenv": "^16.0.3",
     "redis-om": "^0.4.3"
