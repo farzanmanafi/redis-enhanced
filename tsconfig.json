@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "target": "ES2022", // Changed from ES2020
+    "target": "ES2022",
     "module": "commonjs",
     "declaration": true,
     "outDir": "./dist",
@@ -9,6 +9,6 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true
   },
-  "include": ["src", "tests", "examples"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

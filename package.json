@@ -12,7 +12,8 @@
     "example:basic": "ts-node examples/basic-usage.ts",
     "example:persistence": "ts-node examples/persistence.ts",
     "example:transaction": "ts-node examples/transaction.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "prepare": "npm run build"
   },
   "keywords": [
     "redis",
